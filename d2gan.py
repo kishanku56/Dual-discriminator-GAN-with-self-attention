@@ -29,64 +29,83 @@ ngf = 128
 # Size of feature maps in discriminator
 ndf = 128
 class Generator(nn.Module):
+    '''
+    Defines the generator network architecture for a D2GAN.
+
+    The sequential module takes a latent vector (Z) as input and progressively 
+    upsamples it through a series of transposed convolutional layers to generate 
+    an image output. Each upsampling stage increases the spatial resolution while 
+    reducing the number of feature maps, following the standard DCGAN pattern.
+    '''
     def __init__(self, ngpu):
         super(Generator, self).__init__()
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d( nz, ngf * 4, 4, 1, 0, bias=False),
+            nn.ConvTranspose2d( nz, ngf * 4, 4, 1, 0, bias=False),      # noise vector to 4 by 4 image
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf * 4, ngf * 4, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 4, ngf * 4, 3, 1, 1, bias=False), # refines the image without upsampling
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False), # 8 by 8
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf * 2, ngf*2, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 2, ngf*2, 3, 1, 1, bias=False),   # refining
             nn.BatchNorm2d(ngf*2),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),     # 16 by 16
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf, ngf, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d( ngf, ngf, 3, 1, 1, bias=False),         # refining
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),          # 32 by 32
             nn.Tanh()
         )
 
     def forward(self, input):
         return self.main(input)
 class Discriminator(nn.Module):
+    '''
+    Defines the discriminator network for a Generative Adversarial Network (GAN).
+
+    It progressively downsamples the input image through a series of convolutional 
+    layers, reducing spatial dimensions while increasing feature depth to extract 
+    high-level representations useful for classification.
+	
+	In contrast to DCGAN, where discriminator outputs a probability, D2GAN discriminator outputs
+	a positive real score. Hence the final operation is a softplus instead of sigmoid.
+    '''
     def __init__(self, ngpu):
         super(Discriminator, self).__init__()
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is (nc) x 32 x 32
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),        # 32→16
+            # kernel size=4, stride=2 and padding=1
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),    # 16 by 16     
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False),    # 16→8
+            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False), # 8 by 8  
             nn.BatchNorm2d(ndf*2),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),  # 8→4
+            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),   # 4 by 4
             nn.BatchNorm2d(ndf*4),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),      # 4→1
+            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),   # scalar
             nn.Softplus()
         )
 
     def forward(self, input):
         return self.main(input)
 
-# custom weights initialization called on ``netG`` and ``netD``
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -155,8 +174,8 @@ if __name__ == "__main__":
 
     # Number of GPUs available. Use 0 for CPU mode.
     ngpu = 1
-    alpha=0.2
-    beta=0.2
+    alpha=0.2	# controls diversity
+    beta=0.2	# controls realism
 
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
@@ -244,9 +263,7 @@ if __name__ == "__main__":
         # For each batch in the dataloader
         for i, data in enumerate(dataloader, 0):
 
-            ##############################################
-            # (1) Update D1 and D2 networks
-            ##############################################
+
             netD1.zero_grad()
             netD2.zero_grad()
 
@@ -270,9 +287,6 @@ if __name__ == "__main__":
             optimizerD1.step()
             optimizerD2.step()
 
-            ##############################################
-            # (2) Update Generator
-            ##############################################
             netG.zero_grad()
             noise = torch.randn(b_size, nz, 1, 1, device=device)
             fake = netG(noise)
@@ -290,6 +304,8 @@ if __name__ == "__main__":
                 print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_D2: %.4f\tLoss_G: %.4f'
                     % (epoch, num_epochs, i, len(dataloader),
                         d1_loss.item(),d2_loss.item(), g_loss.item()))
+				
+                print('D1_Gz: %.4f\tD2_Gz: %.4f'% (D1_fake_forG.mean().item(),D2_fake_forG.mean().item()))
 
             # Save Losses for plotting later
             G_losses.append(g_loss.item())
