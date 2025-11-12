@@ -18,7 +18,7 @@ import pickle
 import sys
 
 
-# Number of channels in the training images. For color images this is 3
+# Number of channels in the training images
 nc = 3
 
 # Size of z latent vector (i.e. size of generator input)
@@ -32,67 +32,80 @@ ndf = 128
 
 
 class Generator(nn.Module):
+    '''
+    Defines the generator network architecture for a GAN.
+
+    The sequential module takes a latent vector (Z) as input and progressively 
+    upsamples it through a series of transposed convolutional layers to generate 
+    an image output. Each upsampling stage increases the spatial resolution while 
+    reducing the number of feature maps, following the standard DCGAN pattern.
+    '''
     def __init__(self, ngpu):
         super(Generator, self).__init__()
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d( nz, ngf * 4, 4, 1, 0, bias=False),
+            nn.ConvTranspose2d( nz, ngf * 4, 4, 1, 0, bias=False),      # noise vector to 4 by 4 image
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf * 4, ngf * 4, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 4, ngf * 4, 3, 1, 1, bias=False), # refines the image without upsampling
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False), # 8 by 8
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf * 2, ngf*2, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 2, ngf*2, 3, 1, 1, bias=False),   # refining
             nn.BatchNorm2d(ngf*2),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),     # 16 by 16
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf, ngf, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d( ngf, ngf, 3, 1, 1, bias=False),         # refining
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),          # 32 by 32
             nn.Tanh()
         )
 
     def forward(self, input):
         return self.main(input)
 
-
 class Discriminator(nn.Module):
+    '''
+    Defines the discriminator network for a Generative Adversarial Network (GAN).
+
+    It progressively downsamples the input image through a series of convolutional 
+    layers, reducing spatial dimensions while increasing feature depth to extract 
+    high-level representations useful for classification.
+    '''
     def __init__(self, ngpu):
         super(Discriminator, self).__init__()
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is (nc) x 32 x 32
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),        # 32→16
+            # kernel size=4, stride=2 and padding=1
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),    # 16 by 16     
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False),    # 16→8
+            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False), # 8 by 8  
             nn.BatchNorm2d(ndf*2),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),  # 8→4
+            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),   # 4 by 4
             nn.BatchNorm2d(ndf*4),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),      # 4→1
+            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),   # scalar
             nn.Sigmoid()
         )
 
     def forward(self, input):
         return self.main(input)
 
-
-# custom weights initialization called on ``netG`` and ``netD``
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -242,52 +255,41 @@ if __name__ == "__main__":
     for epoch in range(start_epoch,num_epochs):
         # For each batch in the dataloader
         for i, data in enumerate(dataloader, 0):
-
-            ############################
-            # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
-            ###########################
-            ## Train with all-real batch
             netD.zero_grad()
-            # Format batch
+            # get a batch of real images
             real_cpu = data[0].to(device)
             b_size = real_cpu.size(0)
             label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
-            # Forward pass real batch through D
             output = netD(real_cpu).view(-1)
-            # Calculate loss on all-real batch
+            # calculate loss for real images
             errD_real = criterion(output, label)
-            # Calculate gradients for D in backward pass
             errD_real.backward()
             D_x = output.mean().item()
 
-            ## Train with all-fake batch
             # Generate batch of latent vectors
             noise = torch.randn(b_size, nz, 1, 1, device=device)
             # Generate fake image batch with G
             fake = netG(noise)
             label.fill_(fake_label)
-            # Classify all fake batch with D
             output = netD(fake.detach()).view(-1)
-            # Calculate D's loss on the all-fake batch
+            # calculate loss for fake images
             errD_fake = criterion(output, label)
-            # Calculate the gradients for this batch, accumulated (summed) with previous gradients
             errD_fake.backward()
             D_G_z1 = output.mean().item()
             # Compute error of D as sum over the fake and the real batches
             errD = errD_real + errD_fake
-            # Update D
             optimizerD.step()
 
-            ############################
-            # (2) Update G network: maximize log(D(G(z)))
-            ###########################
             netG.zero_grad()
-            label.fill_(real_label)  # fake labels are real for generator cost
+            '''
+            We use non saturating loss for the generator since it avoids vanishing gradients when discriminator
+            becomes too strong. So labels passed to the generator will be 1 instead of 0.
+            '''
+            label.fill_(real_label)
             # Since we just updated D, perform another forward pass of all-fake batch through D
             output = netD(fake).view(-1)
-            # Calculate G's loss based on this output
+            # Calculate generator loss
             errG = criterion(output, label)
-            # Calculate gradients for G
             errG.backward()
             D_G_z2 = output.mean().item()
             # Update G
