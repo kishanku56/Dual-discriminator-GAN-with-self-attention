@@ -17,6 +17,9 @@ from IPython.display import HTML
 import pickle
 import sys
 
+import matplotlib
+matplotlib.rcParams['animation.embed_limit'] = 200
+
 
 # Number of channels in the training images
 nc = 3
@@ -197,6 +200,8 @@ if __name__ == "__main__":
         img_list = checkpoint['img_list']
         iters = checkpoint['iters']
         start_epoch = checkpoint['epoch'] + 1
+        img_list = [img.cpu() for img in checkpoint['img_list']]
+
         
         
         # Restore RNG state IMMEDIATELY
@@ -377,6 +382,8 @@ if __name__ == "__main__":
     ani = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
 
     HTML(ani.to_jshtml())
+    ani.save('training_animation.mp4', writer='ffmpeg', fps=1)
+    ani.save('training_animation.gif', writer='pillow', fps=1)
 
     
     # Grab a batch of real images from the dataloader
