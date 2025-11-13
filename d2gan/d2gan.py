@@ -17,6 +17,9 @@ from IPython.display import HTML
 import pickle
 import sys
 
+import matplotlib
+matplotlib.rcParams['animation.embed_limit'] = 200
+matplotlib.use('Agg')
 # Number of channels in the training images. For color images this is 3
 nc = 3
 
@@ -174,7 +177,7 @@ if __name__ == "__main__":
 
     # Number of GPUs available. Use 0 for CPU mode.
     ngpu = 1
-    alpha=0.2	# controls diversity
+    alpha=0.01	# controls diversity
     beta=0.2	# controls realism
 
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
@@ -206,6 +209,7 @@ if __name__ == "__main__":
         img_list = checkpoint['img_list']
         iters = checkpoint['iters']
         start_epoch = checkpoint['epoch'] + 1
+        img_list = [img.cpu() for img in checkpoint['img_list']]
         # Restore RNG state IMMEDIATELY
         torch.set_rng_state(checkpoint['rng_state'].cpu())
         if torch.cuda.is_available():
@@ -301,12 +305,14 @@ if __name__ == "__main__":
 
             # Output training stats
             if i % 10 == 0:
-                print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_D2: %.4f\tLoss_G: %.4f'
-                    % (epoch, num_epochs, i, len(dataloader),
-                        d1_loss.item(),d2_loss.item(), g_loss.item()))
-				
-                print('D1_Gz: %.4f\tD2_Gz: %.4f'% (D1_fake_forG.mean().item(),D2_fake_forG.mean().item()))
-
+                print(
+                    f"[{epoch:3d}/{num_epochs:3d}][{i:4d}/{len(dataloader):4d}]  "
+                    f"Loss_D1: {d1_loss.item():8.4f}  "
+                    f"Loss_D2: {d2_loss.item():8.4f}  "
+                    f"Loss_G: {g_loss.item():8.4f}  "
+                    f"D1_Gz: {D1_fake_forG.mean().item():8.4f}  "
+                    f"D2_Gz: {D2_fake_forG.mean().item():8.4f}"
+                )
             # Save Losses for plotting later
             G_losses.append(g_loss.item())
             D1_losses.append(d1_loss.item())
@@ -379,7 +385,8 @@ if __name__ == "__main__":
     plt.xlabel("iterations")
     plt.ylabel("Loss")
     plt.legend()
-    plt.show()
+    plt.savefig(f"loss_plot_till_epoch_{num_epochs}.png", bbox_inches='tight')   # <-- Save to file
+    plt.close()
 
 
     fig = plt.figure(figsize=(8,8))
@@ -388,26 +395,30 @@ if __name__ == "__main__":
     ani = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
 
     HTML(ani.to_jshtml())
-    
+    ani.save(f'training_animation_till_epoch_{num_epochs}.mp4', writer='ffmpeg', fps=1)
+
     
     # Grab a batch of real images from the dataloader
     real_batch = next(iter(dataloader))
 
-    # Plot the real images
-    plt.figure(figsize=(15,15))
-    plt.subplot(1,2,1)
+    # ---- Save REAL images ----
+    plt.figure(figsize=(8,8))
     plt.axis("off")
     plt.title("Real Images")
-    plt.savefig("fake_images_last_epoch.png", bbox_inches='tight')
-    plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
+    real_grid = vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True)
+    plt.imshow(np.transpose(real_grid.cpu(), (1,2,0)))
+    plt.savefig(f"real_images.png", bbox_inches='tight')
+    plt.close()
 
-    # Plot the fake images from the last epoch
-    plt.subplot(1,2,2)
+
+    # ---- Save FAKE images ----
+    plt.figure(figsize=(8,8))
     plt.axis("off")
     plt.title("Fake Images")
-    plt.imshow(np.transpose(img_list[-1],(1,2,0)))
-    plt.savefig("fake_images_last_epoch.png", bbox_inches='tight')
-    plt.show()
+    fake_grid = img_list[-1]   # already normalized grid tensor
+    plt.imshow(np.transpose(fake_grid, (1,2,0)))
+    plt.savefig(f"fake_images_epoch_{num_epochs}.png", bbox_inches='tight')
+    plt.close()
     
 
 
