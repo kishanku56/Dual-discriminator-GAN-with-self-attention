@@ -117,7 +117,7 @@ class Discriminator(nn.Module):
             spectral_norm(nn.Conv2d(nc, ndf, 4, 2, 1, bias=False)),  
             nn.LeakyReLU(0.2, inplace=True),
             
-            SelfAttention(ndf),  # Attention at 8x8 feature map
+            SelfAttention(ndf),
 
             spectral_norm(nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False)),
             nn.BatchNorm2d(ndf*2),
@@ -447,5 +447,6 @@ if __name__ == "__main__":
     plt.savefig(f"fake_images_epoch_{num_epochs}.png", bbox_inches='tight')
     plt.close()
     
+
 
 
