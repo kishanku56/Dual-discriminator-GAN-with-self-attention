@@ -42,7 +42,6 @@ def get_inception_activations(images, device, batch_size=64):
     with torch.no_grad():
         for i in range(0, len(images), batch_size):
             batch = images[i:i+batch_size].to(device)
-            # Scale from [-1,1] → [0,1] if needed
             if batch.min() < 0:
                 batch = (batch + 1.0) / 2.0
             # Normalize with ImageNet stats
@@ -137,18 +136,17 @@ if __name__ == "__main__":
     ngpu=1
 
     dataset = dset.CIFAR10(root=path+"/data", train=True, download=True, transform=transform)
-
-
-    from torch.utils.data import random_split
-    num_real = 10000
-    generator = torch.Generator().manual_seed(42)
-    subset, _ = random_split(dataset, [num_real, len(dataset) - num_real], generator=generator)
-    dataloader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=True, num_workers=workers)
+    dataloader = torch.utils.data.DataLoader(
+        dataset, 
+        batch_size=64, 
+        shuffle=False, 
+        num_workers=workers
+    )
 
     # Decide which device we want to run on
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
     fid_scores={}
-    for epoch in range(start,end,5):
+    for epoch in range(start,end+1,5):
         fid_scores[epoch]=fid_score_full(f"{path}/all_fake_images_epoch_{epoch}.pt",dataloader,device)
         print(fid_scores[epoch])
     
@@ -156,6 +154,6 @@ if __name__ == "__main__":
         print(f"{key}: {value}")
 
     filename = path+"/fid_scores.txt"
-    with open(filename, 'w') as f:
+    with open(filename, 'a') as f:
         for key, value in fid_scores.items():
             f.write(f"{key}: {value}\n")
