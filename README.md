@@ -48,7 +48,6 @@ Training scripts include:
 We compute:
 - **Inception Score (IS)**
 - **Fréchet Inception Distance (FID)**
-
 Generated samples and metrics are stored every 5 epochs.
 
 ---
