@@ -1,4 +1,4 @@
-# GAN Variants on CIFAR-10: DCGAN, DCGAN-SA, D2GAN, and D2GAN-SA
+# Dual Discriminator GAN with self attention
 
 This project was implemented as part of the CS787: Generative AI course at IIT Kanpur during my First Semester of M.Tech, 2025.
 
@@ -9,7 +9,7 @@ This project evaluates four generative models on the CIFAR-10 dataset:
 3. **Dual-Discriminator GAN (D2GAN)**
 4. **Dual-Discriminator GAN + Self-Attention**
 
-The goal is to study the effect of self-attention and dual-discriminator training on image quality, diversity, and stability.
+The final goal was to integrate self attention mechanism in a dual discriminator GAN, improving diversity as well as quality.
 
 ---
 
