@@ -1,4 +1,6 @@
-# GAN Variants on CIFAR-10: DCGAN, SAGAN, D2GAN, and D2GAN-SA
+# GAN Variants on CIFAR-10: DCGAN, DCGAN-SA, D2GAN, and D2GAN-SA
+
+This project was implemented as part of the CS787: Generative AI course at IIT Kanpur during my First Semester of M.Tech, 2025.
 
 This project evaluates four generative models on the CIFAR-10 dataset:
 
@@ -49,5 +51,6 @@ We compute:
 - **Inception Score (IS)**
 - **Fréchet Inception Distance (FID)**
 Generated samples and metrics are stored every 5 epochs.
+
 
 ---
