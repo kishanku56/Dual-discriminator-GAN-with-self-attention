@@ -50,7 +50,25 @@ Training scripts include:
 We compute:
 - **Inception Score (IS)**
 - **Fréchet Inception Distance (FID)**
-Generated samples and metrics are stored every 5 epochs.
 
+
+Results:
+## Final Model Performance on CIFAR-10 (FID ↓, IS ↑)
+
+| Model            | FID ↓ | IS ↑ |
+|------------------|-------|------|
+| DCGAN (baseline) | 25.66 | 6.17 |
+| D2GAN            | 21.40 | 6.43 |
+| DCGAN-SA         | 23.62 | 6.34 |
+| D2GAN-SA         | 27.55 | 6.09 |
+
+
+D2GAN achieves the best overall generative performance on CIFAR-10, obtaining the lowest FID (21.40). The dual-discriminator setup effectively improves mode coverage and sample realism compared to single-discriminator GANs.
+
+Integrating self-attention into DCGAN provided modest improvements (FID: 23.62); however, applying the same modification to D2GAN led to a decline in performance (FID: 27.55). This behavior can be attributed to two main factors: (i) attention mechanisms offer limited benefit at the low spatial resolution of CIFAR-10, and (ii) the KL-driven training dynamics of D2GAN may conflict with attention-based feature modeling, resulting in unstable optimization.
+
+Additionally, our study underscores the critical role of spectral normalization, discriminator update frequency, and the strategic placement of refining layers in stabilizing training and enhancing generative quality.
+
+Overall, the results suggest that self-attention is not particularly effective for low-resolution datasets like CIFAR-10, where long-range dependencies are limited. While attention improves feature coherence slightly in DCGAN variants, it does not translate into meaningful gains for D2GAN. In contrast, the standard D2GAN—without at
 
 ---
