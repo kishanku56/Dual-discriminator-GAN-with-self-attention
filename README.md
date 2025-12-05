@@ -1,6 +1,6 @@
 # Dual Discriminator GAN with self attention
 
-This project was implemented as part of the CS787: Generative AI course at IIT Kanpur during my First Semester of M.Tech, 2025.
+This project was implemented as part of the CS787(Generative AI) course at IIT Kanpur during my First Semester of M.Tech, 2025.
 
 This project evaluates four generative models on the CIFAR-10 dataset:
 
